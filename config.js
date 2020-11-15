@@ -16,7 +16,7 @@
     var config = {
 
         baseAppUrl: "",
-        port: 5000,
+        port: 8061,
         relativeStaticUrl: "/s",
         use_http2: true,
         DEBUG: false,
