@@ -16,7 +16,7 @@
     var config = {
 
         baseAppUrl: "",
-        port: 5000,
+        port: 8061,
         relativeStaticUrl: "/s",
         DEBUG: false,
 
@@ -39,9 +39,9 @@
         CLUSTER_WORKER_RESTART_ON_PERIOD: 8 * 3600 * 1000, // 8 hours.
         CLUSTER_WORKER_RESTART_ON_MEMORY_USED: 120 * 1024 * 1024, // 120 MB.
 
-        RESPONSE_TIMEOUT: 10 * 1000,
+        RESPONSE_TIMEOUT: 5 * 1000,
 
-        SHUTDOWN_TIMEOUT: 12 * 1000,
+        SHUTDOWN_TIMEOUT: 6 * 1000,
 
         USER_AGENT: "Iframely/" + version + " (+http://iframely.com/;)",
         VERSION: version,
@@ -53,13 +53,14 @@
         SKIP_IFRAMELY_RENDERS: false,
         DEFAULT_ASPECT_RATIO: 16 / 9,
         MAX_VERTICAL_ASPECT_RATIO: 1,
+        ASPECT_RATIO_PRECISION: 0.25,
 
         DEFAULT_OMIT_CSS_WRAPPER_CLASS: 'iframely-responsive',
         DEFAULT_MAXWIDTH_WRAPPER_CLASS: 'iframely-embed',
 
         T: {
             text_html: "text/html",
-            maybe_text_html: "maybe_text_html",            
+            maybe_text_html: "maybe_text_html",
             javascript: "application/javascript",
             safe_html: "text/x-safe-html",
             image_jpeg: "image/jpeg",
@@ -74,7 +75,8 @@
             video_ogg: "video/ogg",
             video_webm: "video/webm",
             stream_apple_mpegurl: "application/vnd.apple.mpegurl",
-            stream_x_mpegurl: "application/x-mpegURL"
+            stream_x_mpegurl: "application/x-mpegURL",
+            audio_mp3: "audio/mp3"
         },
 
         PROMO_RELS: [
@@ -140,14 +142,32 @@
 
             audio: 'audio',
             slideshow: 'slideshow',
-            playlist: 'playlist'            
+            playlist: 'playlist'
         },
 
-        // Option names   
+        // Option names
         O: {
+            // compact & full - deprecated
             compact: "iframely.less",
-            full: "iframely.more"
-        },        
+            full: "iframely.more",
+            // use O.more & O.less instead
+            more: "iframely.more",
+            less: "iframely.less"
+        },
+
+        // Option labels:
+        L: {
+            horizontal: 'Slimmer horizontal player',
+            playlist: 'Include playlist',
+            hide_artwork: 'Hide artwork',
+            theme: 'Theme color',
+            light: 'Light',
+            dark: 'Dark',
+            auto: 'Auto',
+            default: 'Default',
+            height: 'Adjust height',
+            page: 'Active page'
+        },
 
         // Whitelist settings.
         REL: {
@@ -157,6 +177,7 @@
                 "player",
                 "survey",
                 "image",
+                "summary",
                 "thumbnail",
                 "logo"
             ],
@@ -205,6 +226,8 @@
             "iframely",
             "sm4"
         ],
+
+        KNOWN_VIDEO_SOURCES: /(youtube|youtu|youtube\-nocookie|vimeo|dailymotion|theplatform|jwplatform|jwplayer|ooyala|cnevids|newsinc|podbean|simplecast|libsyn|wistia|podiant|art19|kaltura|mtvnservices|brightcove|bcove|soundcloud|giphy|viddler|flowplayer|vidible|bandzoogle|podigee|smugmug|facebook|vid)\./i,
 
         OEMBED_RELS_PRIORITY: ["app", "player", "survey", "image", "reader"],
         OEMBED_RELS_MEDIA_PRIORITY: ["player", "survey", "image", "reader", "app"],
