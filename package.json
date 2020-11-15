@@ -55,8 +55,6 @@
     "iframely-proxy-plugins": true,
     "main": "./lib/core",
     "scripts": {
-        "start": "node index",
-        "deploy": "now && now alias",
         "test": "vows test/main.js --isolate --spec && npm run test-e2e",
         "test-e2e": "NODE_ENV=test PORT=8080 mocha --exit test/e2e.js"
     },
