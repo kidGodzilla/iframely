@@ -7,31 +7,17 @@ module.exports = {
     // then we grab meta and get og:image from there if it's not "security checked" for rate limits.
     // Similar to what we do in domain-icon: ignore if failed.
 
-    re: [
-        //fb videos
-        /^https?:\/\/(?:www|business)\.facebook\.com\/video\/video\.php.*[\?&]v=(\d{5,})(?:$|&)/i,
-        /^https?:\/\/(?:www|business)\.facebook\.com\/photo\.php.*[\?&]v=(\d{5,})(?:$|&)/i,
-        /^https?:\/\/(?:www|business)\.facebook\.com\/video\/video\.php\?v=(\d{5,})$/i,
-        /^https?:\/\/(?:www|business)\.facebook\.com\/video\.php.*[\?&]v=(\d{5,})(?:$|&)/i,
-        /^https?:\/\/(?:www|business)\.facebook\.com\/video\.php.*[\?&]id=(\d{5,})(?:$|&)/i,
-        /^https?:\/\/(?:www|business)\.facebook\.com\/[a-zA-Z0-9.]+\/videos\/.+/i,
-
-        //fb posts
-        /^https?:\/\/(?:www|m|business)\.facebook\.com\/photo\.php\?fbid=(\d{10,})/i,
-        /^https?:\/\/(?:www|m|business)\.facebook\.com\/([a-zA-Z0-9\.\-]+)\/(posts|activity)\/(\d{10,})/i,
-        /^https?:\/\/(?:www|m|business)\.facebook\.com\/([a-zA-Z0-9\.\-]+)\/photos\/[^\/]+\/(\d{10,})/i,
-        /^https?:\/\/(?:www|m|business)\.facebook\.com\/media\/set\/\?set=[^\/]+(\d{10,})/i        
-
-
-    ],
+    re: [].concat(require('./facebook.post').re, require('./facebook.video').re),
 
     getLink: function(url, __allowFBThumbnail, meta) {
 
-        if (meta['html-title'] && !/security check required/i.test(meta['html-title']) && meta.og && meta.og.image
-            && !/\/p200x200\//i.test(meta.og.image)) { // skip profile pictures
+        var thumbnail = meta.og && meta.og.image || meta.twitter && meta.twitter.image;
+
+        if (meta['html-title'] && !/security check required/i.test(meta['html-title']) && thumbnail
+            && (!/\/s?p?200x200\//i.test(thumbnail) || (meta.og && meta.og.video) )) { // skip profile pictures for posts
 
             return {
-                href: meta.og.image,
+                href: thumbnail,
                 type: CONFIG.T.image,
                 rel: CONFIG.R.thumbnail
             }
@@ -43,7 +29,8 @@ module.exports = {
 
     getData: function(oembed, options) {
         
-        if (oembed.html && /class=\"fb\-(post|video)\"/i.test(oembed.html) && !/comment_id=/.test(oembed.html)) {
+        if (oembed.html && /class=\"fb\-(post|video)\"/i.test(oembed.html) 
+            && options.getProviderOptions('facebook.thumbnail', true) && !/comment_id=/.test(oembed.html)) {
 
             options.followHTTPRedirect = true; // avoid security re-directs of URLs if any
 

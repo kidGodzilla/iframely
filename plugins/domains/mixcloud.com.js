@@ -4,12 +4,17 @@ const URL = require("url");
 
 module.exports = {
 
+    re: [
+        /^https?:\/\/(?:www\.)mixcloud\.com\/[a-zA-Z0-9\.\-_]+\/?(?:\?.+)?$/,
+        /^https?:\/\/(?:www\.)mixcloud\.com\/[a-zA-Z0-9\.\-_]+\/[a-zA-Z0-9\.\-_]+\-\d+\/?(?:\?.+)?/
+    ],
+
     mixins: [
         "oembed-title",
         "oembed-description",
         "oembed-author",
         "oembed-site",
-        //"oembed-rich",
+        "oembed-error",
         "domain-icon"
     ],
 
@@ -41,6 +46,8 @@ module.exports = {
                     widget.rel.push(CONFIG.R.summary);
                     widget.width = oembed.width;
                     widget.height = oembed.height;
+
+                    widget.error = 'Mixcloud user summary is currently broken'; // Sept 22, 2020
 
                 } else {
 
@@ -120,8 +127,8 @@ module.exports = {
 
     },
 
-    tests: [{noFeeds: true}, {skipMixins: ["oembed-description"]},
-        "https://www.mixcloud.com/djtraviesa/",
+    tests: [{noFeeds: true}, {skipMixins: ["oembed-description", "oembed-error"]},
+        // "https://www.mixcloud.com/djtraviesa/",
         "https://www.mixcloud.com/sohoradio/dub-on-air-with-dennis-bovell-03032019/"
     ]
 };

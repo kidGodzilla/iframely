@@ -4,25 +4,22 @@ const URL = require("url");
 
 module.exports = {
 
-    re: /https?:\/\/codepen\.io\/([a-z0-9\-_]+)\/(pen|details|full)\/([a-z0-9\-]+)/i,
+    re: /https?:\/\/codepen\.io\/(?:[a-z0-9\-_]+\/)?(pen|details|full)\/([a-z0-9\-]+)/i,
 
     mixins: [
         "oembed-thumbnail",
         "oembed-author",
         "oembed-site",
         "oembed-title",
-        "description",        
+        //"description", // don't enable to avoid 403 from CodePen's htmlparser. Description is '...' in most cases anyway
         "domain-icon"
     ],
 
-    getLink: function(oembed, options, urlMatch) {
+    getLink: function(oembed, options) {
 
-        if (urlMatch[1] === 'anon') {
-            return { // Anonymous Pens can't be embedded
-                    // return icon to avoid fallback to generic (whitelisted) parser
-                href: 'http://codepen.io/logo-pin.svg',
-                type: CONFIG.T.icon,
-                rel: CONFIG.R.icon
+        if (oembed.author_url ===  "https://codepen.io/anon/") {
+            return { // And no fallback to generics
+                message: "Anonymous Pens can't be embedded."
             }
         }
 
@@ -41,7 +38,7 @@ module.exports = {
             var click_to_load = options.getRequestOptions('codepen.click_to_load', /\/embed\/preview\//.test(href));
             href = href.replace(/\/embed\/(?:preview\/)?/, '/embed/').replace(/\/embed\//, '/embed/' + (click_to_load ? 'preview/' : ''));
 
-            params.height = parseInt(options.getRequestOptions('codepen.height')) || oembed.height;
+            params.height = options.getRequestOptions('codepen.height', oembed.height);
 
             var theme = options.getRequestOptions('players.theme', params.theme || 'auto');
 
@@ -86,7 +83,8 @@ module.exports = {
     },
         "http://codepen.io/kevinjannis/pen/pyuix",
         "http://codepen.io/nosecreek/details/sprDl",
-        "http://codepen.io/dudleystorey/pen/HrFBx"
+        "http://codepen.io/dudleystorey/pen/HrFBx",
+        "https://codepen.io/pen/vwOyvW"
     ]
 
 };
