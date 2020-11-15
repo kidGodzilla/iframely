@@ -1,11 +1,8 @@
-var $ = require('cheerio');
+const $ = require('cheerio');
 
 module.exports = {
 
-    re: [
-        /^https?:\/\/([a-z0-9-]+\.tumblr\.com)\/(post|image)\/(\d+)(?:\/[a-z0-9-]+)?/i,
-        /^https?:\/\/([a-z-\.]+)\/(post)\/(\d{9,13})(?:\/[a-z0-9-]+)?/i
-    ], 
+    re: require('./tumblr.api').re, 
 
     getLink: function(tumblr_post) {
 
@@ -45,7 +42,6 @@ module.exports = {
     tests: [{skipMethods: ["getData", "getLink"]},
         "http://fyteensontop.tumblr.com/post/58053062280/130812-fanta-fanmeeting-niel-apink-eunji-cut",
         "http://hubol.tumblr.com/post/58053061056/check-out-how-cool-this-class-is",
-        "http://blog.instagram.com/post/53448889009/video-on-instagram",
         "http://soupsoup.tumblr.com/post/41952443284/think-of-yourself-less-of-a-journalist-and-more"
     ]
 };

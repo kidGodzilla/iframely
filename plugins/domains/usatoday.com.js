@@ -3,8 +3,8 @@ module.exports = {
     re: [
         /^https?:\/\/www\.([a-z\-]+)\.com\/media\/cinematic\/video\/(\d{7,12})\/[a-zA-Z0-9\-\_:\.]+\/?(?:[^\/]+)?$/i,
         /^https?:\/\/www\.([a-z\-]+)\.com\/media\/cinematic\/video\/(\d{7,12})\/?(?:[^\/]+)?$/i,
-        /^https?:\/\/www\.([a-z\-]+)\.com\/videos\/\w+\/(?:[a-z0-9\-\/]+)?\d{4}\/\d{2}\/\d{2}\/(\d{7,12})\/?(?:[^\/]+)?$/i,
-        /^https?:\/\/www\.([a-z\-]+)\.com\/videos\/\w+\/(?:[a-z0-9\-\/]+)?\d{4}\/\d{2}\/\d{2}\/[a-zA-Z0-9\-\_\.:]+\/(\d{7,12})\/?(?:[^\/]+)?$/i
+        /^https?:\/\/www\.([a-z\-]+)\.com\/videos\/\w+\/(?:[a-z0-9\-\_\/]+)?\d{4}\/\d{2}\/\d{2}\/(\d{7,12})\/?(?:[^\/]+)?$/i,
+        /^https?:\/\/www\.([a-z\-]+)\.com\/videos\/\w+\/(?:[a-z0-9\-\_\/]+)?\d{4}\/\d{2}\/\d{2}\/[a-zA-Z0-9\-\_\.:]+\/(\d{7,12})\/?(?:[^\/]+)?$/i
     ],
 
     provides: "gannettVideo",
@@ -13,9 +13,9 @@ module.exports = {
         "*"
     ],
 
-    getData: function (urlMatch, meta) {
+    getData: function (urlMatch, schemaVideoObject, meta) {
 
-        var img_src = meta.twitter && meta.twitter.image || meta.ld && meta.ld.videoobject && meta.ld.videoobject.thumbnailurl || meta.og && meta.og.image;
+        var img_src = schemaVideoObject.thumbnailurl || meta.twitter && meta.twitter.image || meta.og && meta.og.image;
 
         if (img_src && (/^https?:\/\/\w+\.gannett\-cdn\.com\//i.test(img_src) || /^https?:\/\/videos\.usatoday\.net\//i.test(img_src) || /brightcove/i.test(img_src))) {
             return {
@@ -46,14 +46,13 @@ module.exports = {
         "http://www.usatoday.com/media/cinematic/video/87694100/abdul-jabbar-mocks-trump-says-im-jordan/",
         "http://www.usatoday.com/videos/news/nation/2016/07/29/87694100/",
         "http://www.usatoday.com/videos/life/people/2016/11/03/93261598/",
-        "http://www.usatoday.com/videos/news/humankind/2016/09/20/90730062/",
         "https://www.usatoday.com/videos/news/2018/07/03/white-house-twitter-account-attacks-senators-critical-ice/36581999/",
         "http://www.desertsun.com/media/cinematic/video/92390930/police-chief-quit-ignoring-red-flags/",
         "http://www.usatoday.com/videos/life/2016/11/09/93525560/",
         "http://www.usatoday.com/videos/news/politics/elections/2016/2016/11/09/93532206/",
         "http://www.usatoday.com/videos/sports/2016/12/20/behind-scenes:-michael-phelps-cover-shoot/95645660/",
         "http://www.usatoday.com/videos/news/2017/01/07/what-know-ft.-lauderdale-airport-shooter/96291014/",
-        "http://www.cincinnati.com/media/cinematic/video/9430427/",
+        "https://www.cincinnati.com/videos/sports/high-school/high-school-sports/2020/08/19/watch-enquirer-writers-break-down-ohio-high-school-girls-soccer-scene-2020/5607979002/",
         "http://www.guampdn.com/videos/news/nation/2015/08/18/31948487/",
         "http://www.courier-journal.com/videos/sports/college/kentucky/2015/08/17/31862551/",
         "http://www.newarkadvocate.com/videos/sports/high-school/football/2015/08/15/31789999/",
