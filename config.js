@@ -21,6 +21,9 @@
         DEBUG: false,
 
         WHITELIST_URL: 'https://iframely.com/qa/domains.json',
+        DISABLE_HTTP2: true,
+
+        SPDY_AGENT_DEFAULT_PORT: 443,
         WHITELIST_URL_RELOAD_PERIOD: 60 * 60 * 1000,  // will reload WL every hour, if no local files are found in /whitelist folder
 
         WHITELIST_WILDCARD: {},
@@ -36,6 +39,14 @@
         CACHE_TTL_PAGE_404: 10 * 60,
         CACHE_TTL_PAGE_OTHER_ERROR: 1 * 60,
 
+        // Do not cache response in htmlparser with these status codes.
+        TEMP_HTTP_ERROR_CODES: [
+            408,
+            418,
+            429
+            // 5xx included in logic.
+        ],
+
         HTTP2_RETRY_CODES_LIST: [
             'ECONNRESET',
             'ESOCKETTIMEDOUT'
@@ -48,7 +59,7 @@
 
         RESPONSE_TIMEOUT: 15 * 1000,
 
-        SHUTDOWN_TIMEOUT: 6 * 1000,
+        SHUTDOWN_TIMEOUT: 12 * 1000,
 
         VERSION: version,
 
@@ -66,7 +77,7 @@
 
         T: {
             text_html: "text/html",
-            maybe_text_html: "maybe_text_html",            
+            maybe_text_html: "maybe_text_html",
             javascript: "application/javascript",
             safe_html: "text/x-safe-html",
             image_jpeg: "image/jpeg",
@@ -429,7 +440,7 @@
         } else {
             baseAppUrlForAgent = config.baseAppUrl;
         }
-        
+
         config.USER_AGENT = "Iframely/" + version + " (+" + (baseAppUrlForAgent || 'https://github.com/itteco/iframely') + ")";
     }
 
