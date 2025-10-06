@@ -15,7 +15,7 @@
     const config = {
 
         baseAppUrl: "",
-        port: 8061,
+        port: 5000,
         relativeStaticUrl: "/s",
         use_http2: true,
         DEBUG: false,
