@@ -1,6 +1,4 @@
-var _ = require("underscore");
-
-var rel = [CONFIG.R.image, CONFIG.R.og];
+const rel = [CONFIG.R.image, CONFIG.R.og];
 
 function getImageLinks(image) {
     return [{
@@ -18,13 +16,13 @@ function getImageLinks(image) {
     }];
 }
 
-module.exports = {
+export default {
 
     getLinks: function(og) {
 
         if (og.image instanceof Array) {
 
-            return _.flatten(og.image.map(getImageLinks));
+            return og.image.map(getImageLinks).flat();
 
         } else if (og.image) {
 

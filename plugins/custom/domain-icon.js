@@ -1,11 +1,7 @@
 // use this mixin for domain plugins where you do not want to pull out htmlparser but do need an icon or logo
+import * as async from 'async';
 
-var core = require('../../lib/core');
-var cache = require('../../lib/cache');
-var async = require('async');
-var _ = require('underscore');
-
-module.exports = {
+export default {
 
     provides: 'domain_icons',
 
@@ -13,7 +9,7 @@ module.exports = {
         return domain_icons;
     },
 
-    getData: function(url, cb, options) {
+    getData: function(url, iframelyRun, cache, log, options, cb) {
 
         // find domain and protocol
         var domain, protocol;
@@ -29,6 +25,16 @@ module.exports = {
 
         var domainUri = protocol + domain;
         var key = 'ha:domain_icon:' + domain;
+
+        if (options.debug) {
+            key += ':debug';
+        }
+
+        const FALLBACK_ICONS = [{
+            href: CONFIG.FALLBACK_ICONS && CONFIG.FALLBACK_ICONS[domain.replace('www.', '')] || `${domainUri}/favicon.ico`,
+            type: CONFIG.T.image,
+            rel: [CONFIG.R.icon, CONFIG.R.iframely] // It will be validated as image.
+        }];
 
         async.waterfall([
 
@@ -46,33 +52,49 @@ module.exports = {
                     });
 
                     cb(null, {
-                        domain_icons: data
+                        domain_icons: data.length > 0 ? data : FALLBACK_ICONS
                     });
 
                 } else {
 
-                    // skip domain icon on cache miss 
-                    cb (null, null); 
+                    if (!options.forceSyncCheck) {
+                        // On cache miss hard code domain icon to favicon.ico.
+
+                        cb(null, {
+                            domain_icons: FALLBACK_ICONS
+                        }); 
+                    }
 
                     // and asynchronously put in cache for next time
                     // + run icons validation right away
 
                     // forceSyncCheck - ask 'checkFavicon' to check favicon this time before callback.
-                    core.run(domainUri, _.extend({}, options, {forceSyncCheck: true}), function(error, data) {
+                    var options2 = Object.assign({}, options, {forceSyncCheck: true});
+                    delete options2._usedProviderOptions;
+
+                    iframelyRun(domainUri, options2, function(error, data) {
+
+                        var icons;
+
                         if (data && data.links) {
 
                             // do need to set cache here as domains may redirect, 
                             // e.g. http ->https, then http urls will always miss icons.
 
-                            var icons = data.links.filter(function(link) {
+                            icons = data.links.filter(function(link) {
                                 return link.rel.indexOf(CONFIG.R.icon) > -1;
                             });
-
-                            cache.set(key, icons, {ttl: CONFIG.IMAGE_META_CACHE_TTL});
-
                         } else {
-                            cache.set(key, [], {ttl: CONFIG.IMAGE_META_CACHE_TTL});
+                            log('[domain-icons] no icons for', domainUri);
+                            icons = [];
                         }
+                        
+                        if (options.forceSyncCheck) {
+                            // skip domain icon on cache miss 
+                            cb(null, {domain_icons: icons && icons.length > 0 ? icons : FALLBACK_ICONS}); 
+                        }
+
+                        cache.set(key, icons, {ttl: icons.length > 0 ? CONFIG.IMAGE_META_CACHE_TTL : CONFIG.CACHE_TTL_PAGE_TIMEOUT});
                     });
                 }
             }

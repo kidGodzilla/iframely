@@ -1,15 +1,15 @@
-var iframelyCore = require('../../lib/core');
-var utils = require('../../utils');
-var _ = require('underscore');
-var async = require('async');
-var cache = require('../../lib/cache');
-var iframelyUtils = require('../../lib/utils');
-var oembedUtils = require('../../lib/oembed');
-var whitelist = require('../../lib/whitelist');
-var pluginLoader = require('../../lib/loader/pluginLoader');
-var jsonxml = require('jsontoxml');
-var url = require('url');
-var apiUtils = require('./utils');
+import * as iframelyCore from '../../lib/core.js';
+import * as utils from '../../utils.js';
+import * as _ from 'underscore';
+import * as async from 'async';
+import { cache } from '../../lib/cache.js';
+import * as iframelyUtils from '../../lib/utils.js';
+import * as oembedUtils from '../../lib/oembed.js';
+import * as whitelist from '../../lib/whitelist.js';
+import * as pluginLoader from '../../lib/loader/pluginLoader.js';
+import * as jsonxml from 'jsontoxml';
+import * as url from 'url';
+import * as apiUtils from './utils.js';
 
 var getProviderOptionsQuery = apiUtils.getProviderOptionsQuery;
 var getProviderOptionsFromQuery = apiUtils.getProviderOptionsFromQuery;
@@ -35,7 +35,9 @@ function prepareUri(uri) {
 
 var log = utils.log;
 
-var version = require('../../package.json').version;
+import { readFile } from 'fs/promises';
+const json = JSON.parse(await readFile(new URL('../../package.json', import.meta.url)));
+var version = json.version;
 
 function getRenderLinkCacheKey(uri, req) {
     var query = getProviderOptionsQuery(req.query);
@@ -104,9 +106,18 @@ function processInitialErrors(uri, next) {
         next(new utils.HttpError(400, "local domains not supported"));
         return true;
     }
+
+    if (/^(https?:\/\/)?(\.|\/|~)/i.test(uri)) {
+        next(new utils.HttpError(400, "file paths are not accepted"));
+        return true;
+    }
 }
 
-module.exports = function(app) {
+export default function(app) {
+
+    app.get('/health_check', function(req, res, next) {
+        res.sendStatus(200);
+    });
 
     app.get('/iframely', function(req, res, next) {
 
@@ -125,8 +136,9 @@ module.exports = function(app) {
                 iframelyCore.run(uri, {
                     v: '1.3',
                     debug: getBooleanParam(req, 'debug'),
+                    returnProviderOptionsUsage: getBooleanParam(req, 'debug'),
                     mixAllWithDomainPlugin: getBooleanParam(req, 'mixAllWithDomainPlugin'),
-                    forceParams: req.query.meta === "true" ? ["meta", "oembed"] : null,
+                    forceParams: req.query.meta === "true" ? CONFIG.DEBUG_CONTEXTS : null,
                     whitelist: getBooleanParam(req, 'whitelist'),
                     readability: getBooleanParam(req, 'readability'),
                     getWhitelistRecord: whitelist.findWhitelistRecordFor,
@@ -203,7 +215,7 @@ module.exports = function(app) {
                 aspectWrapperClass:     omit_css ? CONFIG.DEFAULT_OMIT_CSS_WRAPPER_CLASS : false,
                 maxWidthWrapperClass:   omit_css ? CONFIG.DEFAULT_MAXWIDTH_WRAPPER_CLASS : false,
                 omitInlineStyles: omit_css,
-                forceWidthLimitContainer: true
+                forceWidthLimitContainer: CONFIG.FORCE_WIDTH_LIMIT_CONTAINER
             });
 
             var forceGroup = req.query.group ? getBooleanParam(req, 'group') : CONFIG.GROUP_LINKS;

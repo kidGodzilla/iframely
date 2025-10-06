@@ -1,13 +1,13 @@
-module.exports = {
+export default {
 
-    re: require('./usatoday.com').re,
+    re: 'usatoday.com',
 
     provides: '__allowEmbedURL',
 
     getData: function(options) {
-    	return {
-    		__allowEmbedURL: true
-    	}
+        return {
+            __allowEmbedURL: true
+        }
     }
 
 }

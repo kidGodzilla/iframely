@@ -1,6 +1,6 @@
-module.exports = {
+export default {
 
-    re: /^https?:\/\/(?:magic|create)\.piktochart\.com\/output\/(\d+\-[\-a-zA-Z-0-9_]+)/i,
+    re: /^https?:\/\/(?:magic|create)\.piktochart\.com\/output\/([\-a-zA-Z-0-9_]+)/i,
 
     mixins: [
         "*"
@@ -13,12 +13,15 @@ module.exports = {
                 id: urlMatch[1]
             },
             type: CONFIG.T.text_html,
-            rel: [CONFIG.R.reader, CONFIG.R.html5, CONFIG.R.ssl],
+            rel: [CONFIG.R.reader, CONFIG.R.ssl]
         };
     },
 
     tests: [
-        "https://magic.piktochart.com/output/16505417-projet-immigration-copy"
-    ]
+        "https://magic.piktochart.com/output/16505417-projet-immigration-copy",
+        "https://magic.piktochart.com/output/14330224-descripciones-fisicas",
 
+        "https://create.piktochart.com/output/986319273bed-trump-tariffs",
+        "https://create.piktochart.com/output/04c845534560-buenas-practicas-en-la-elaboracion-de-alimentos-en-el-hogar"
+    ]
 };

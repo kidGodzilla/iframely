@@ -1,27 +1,19 @@
-(function() {
-
-    if (!CONFIG.tests) {
-        module.exports = function(){};
-        return;
-    }
-
-    var async = require('async');
-    var moment = require('moment');
-    var _ = require('underscore');
-    var exec = require('child_process').exec;
-
-    var models = require('./models');
-    var utils = require('./utils');
+    import * as async from 'async';
+    import moment from 'moment';
+    import * as _ from 'underscore';
+    import { exec as exec } from 'child_process';
+    import * as models from './models.js';
+    import * as utils from './utils.js';
 
     var PluginTest = models.PluginTest;
     var TestingProgress = models.TestingProgress;
 
-    module.exports = function(app){
+    export default function(app){
 
         app.get('/tests/run/:plugin', function(req, res, next) {
 
             if (req.params.plugin == "all") {
-                PluginTest.update({}, {
+                PluginTest.updateMany({}, {
                     $set: {
                         last_test_started_at: null
                     }
@@ -30,9 +22,12 @@
                     multi: true
                 }, function(error) {
                     if (error) {
-                        console.error('Error restarting all tests', error);
+                        
                     }
-                });
+                })
+                    .catch(error => {
+                        console.error('Error restarting all tests', error);
+                    });
                 return res.redirect('/tests');
             }
 
@@ -53,7 +48,11 @@
             async.waterfall([
 
                 function loadProgress(cb) {
-                    TestingProgress.findById(1, cb);
+                    TestingProgress.findById(1)
+                        .then(data => {
+                            cb(null, data);
+                        })
+                        .catch(cb);
                 },
 
                 function loadPluginTests(_progress, cb) {
@@ -159,4 +158,3 @@
             });
         });
     }
-})();

@@ -1,11 +1,8 @@
-var core = require('../../../lib/core');
-var _ = require('underscore');
-
-module.exports = {
+export default {
 
     provides: 'self',
 
-    getData: function(url, __promoUri, options, cb) {
+    getData: function(url, __promoUri, iframelyRun, options, cb) {
 
         // __promoUri may be not string if no rel=promo need to be added
         // see theplatform plugin for example
@@ -16,11 +13,15 @@ module.exports = {
             return cb();
         }
 
-        var options2 = _.extend({}, options, {debug: false, mixAllWithDomainPlugin: false});
+        if (/^\/\//.test(promoUri)) {
+            promoUri = 'http:' + promoUri;
+        }
+
+        var options2 = {...options, ...{debug: false, mixAllWithDomainPlugin: false}};
         delete options2.promoUri;
         delete options2.jar;
 
-        core.run(promoUri, options2, function(error, data) {
+        iframelyRun(promoUri, options2, function(error, data) {
 
             var wrappedError = null;
 
@@ -38,7 +39,9 @@ module.exports = {
 
     getMeta: function(__promoUri, promo) {
         return {
-            promo: promo.meta.canonical || (typeof __promoUri !== "string" ? __promoUri.url : __promoUri)
+            promo: typeof __promoUri !== "string" ? __promoUri.url : __promoUri,
+            provider: promo.meta && (promo.meta.provider || promo.meta.site),
+            provider_url: promo.meta && promo.meta.provider_url // if any;
         };
     },
 
@@ -46,7 +49,7 @@ module.exports = {
 
         var hasGoodLinks = false;
         var links = promo.links.filter(function(link) {
-            var match = _.intersection(link.rel, CONFIG.PROMO_RELS);
+            var match = CONFIG.PROMO_RELS.filter(rel => link.rel.indexOf(rel) > -1);
             if (match.length > 1 || (match.length > 0 && match.indexOf(CONFIG.R.thumbnail) === -1)) {
                 // Detect if has something except thumbnail.
                 hasGoodLinks = true;
@@ -74,7 +77,7 @@ module.exports = {
                     delete link[attr];
                 }
             });
-            if (!_.isEmpty(m)) {
+            if (Object.keys(m).length > 0) {
                 link.media = m;
             }
             if (typeof __promoUri === "string") {

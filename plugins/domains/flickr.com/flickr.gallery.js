@@ -1,4 +1,4 @@
-module.exports = {
+export default {
 
     re: /^https?:\/\/www\.flickr\.com(\/photos\/[@a-zA-Z0-9_\.\-]+\/(?:sets|albums)\/(\d+))/i,    
 
@@ -24,15 +24,15 @@ module.exports = {
         for (key in opts) {
             html = html.replace(new RegExp('\\s?data\\-' + key + '="(true|false)"'), '');
             if (opts[key]) {
-                html = html.replace('data-flickr-embed="true"', 'data-flickr-embed="true" data-' + key + '="true"');
+                html = html.replace("data-flickr-embed='true'", "data-flickr-embed='true' data-" + key + "='true'");
             }
         }
 
         return {
             html: html
                 .replace(/\@n/g, "@N")
-                .replace(/width=\"\d+\" height=\"\d+\" alt/, 'width="100%" alt'),
-            rel: [CONFIG.R.player, CONFIG.R.slideshow, CONFIG.R.ssl, CONFIG.R.inline, CONFIG.R.html5],
+                .replace(/width=[\'\"]\d+[\'\"] height=[\'\"]\d+[\'\"] alt/, 'width="100%" alt'),                 
+            rel: [CONFIG.R.player, CONFIG.R.slideshow, CONFIG.R.ssl, CONFIG.R.inline],
             type: CONFIG.T.text_html,
             "aspect-ratio": oembed.width / oembed.height,
             options: {
@@ -56,6 +56,7 @@ module.exports = {
         },
         "http://www.flickr.com/photos/jup3nep/sets/72157603856136177/",
         "https://www.flickr.com/photos/marshal-banana/albums/72157661935064149",
+        "https://www.flickr.com/photos/mediacult/albums/72157703180229901",
         {
             skipMixins: [
                 "twitter-author",

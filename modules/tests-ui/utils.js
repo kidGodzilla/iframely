@@ -1,20 +1,14 @@
-var _ = require('underscore');
-var FeedParser = require('feedparser');
-var request = require('request');
-var async = require('async');
-var url = require('url');
+import * as _ from 'underscore';
+import FeedParser from 'feedparser';
+import got from 'got';
+import * as async from 'async';
+import * as url from 'url';
+import { PageTestLog, TestUrlsSet, PluginTest } from './models.js';
+import { findWhitelistRecordFor } from '../../lib/whitelist.js';
+import { getPluginData as iframelyGetPluginData } from '../../lib/core.js';
+import * as pluginLoader from '../../lib/loader/pluginLoader.js';
+import * as pluginUtils from '../../lib/loader/utils.js';
 
-var models = require('./models');
-var PageTestLog = models.PageTestLog;
-var TestUrlsSet = models.TestUrlsSet;
-var PluginTest = models.PluginTest;
-
-var findWhitelistRecordFor = require('../../lib/whitelist').findWhitelistRecordFor;
-
-var iframelyGetPluginData = require('../../lib/core').getPluginData;
-
-var pluginLoader = require('../../lib/loader/pluginLoader');
-var pluginUtils = require('../../lib/loader/utils');
 var plugins = pluginLoader._plugins,
     pluginsList = pluginLoader._pluginsList,
     DEFAULT_PARAMS = [].concat(pluginUtils.DEFAULT_PARAMS, pluginUtils.POST_PLUGIN_DEFAULT_PARAMS),
@@ -37,12 +31,17 @@ const COLORS = {
 
 const SLACK_USERNAME = "Testy";
 
-exports.sendQANotification = function(logEntry, data) {
+export function sendQANotification(logEntry, data) {
 
     if (CONFIG.SLACK_WEBHOOK_FOR_QA && CONFIG.SLACK_CHANNEL_FOR_QA) {
 
+        var baseAppUrl = CONFIG.baseAppUrl;
+        if (/^\/\//.test(baseAppUrl)) {
+            baseAppUrl = 'https:' + baseAppUrl;
+        }
+
         var previewMessage = "[" + logEntry.plugin + "] " + data.message;
-        var message = "<" + CONFIG.baseAppUrl + "/tests#" + encodeURIComponent(logEntry.plugin) + "|[" + logEntry.plugin + "]> " + data.message;
+        var message = "<" + baseAppUrl + "/tests#" + encodeURIComponent(logEntry.plugin) + "|[" + logEntry.plugin + "]> " + data.message;
 
         var errors = logEntry.errors_list.map(function(info) {
             return info.replace(logEntry.plugin + ' - ', '');
@@ -51,35 +50,32 @@ exports.sendQANotification = function(logEntry, data) {
             message += " - " + errors;
         }
 
-        request({
-            uri: CONFIG.SLACK_WEBHOOK_FOR_QA,
-            method: 'POST',
-            json: true,
-            body: {
-                "parse": "none",
-                "channel": CONFIG.SLACK_CHANNEL_FOR_QA,
-                "username": SLACK_USERNAME,
-                "text": previewMessage,
-                "blocks": [
+        got.post(CONFIG.SLACK_WEBHOOK_FOR_QA, {
+            json: {
+                parse: "none",
+                channel: CONFIG.SLACK_CHANNEL_FOR_QA,
+                username: SLACK_USERNAME,
+                text: previewMessage,
+                blocks: [
                     {
-                        "type": "section",
-                        "text": {
-                            "type": "mrkdwn",
-                            "text": message  // Message: [domain.com] Failed - errors.
+                        type: "section",
+                        text: {
+                            type: "mrkdwn",
+                            text: message
                         }
                     }
                 ],
-                "attachments": [
+                attachments: [
                     {
-                        "blocks": [{
-                            "type": "section",
-                            "text": {
-                                "type": "mrkdwn",
-                                "verbatim": true,
-                                "text": "`<" + (CONFIG.QA_BASE_URL || CONFIG.baseAppUrl) + "/debug?uri=" + encodeURIComponent(logEntry.url) + "|debug>` " + logEntry.url.replace(/^https?:\/\//, '')    // Debug link.
+                        blocks: [{
+                            type: "section",
+                            text: {
+                                type: "mrkdwn",
+                                verbatim: true,
+                                text: "`<" + (CONFIG.QA_BASE_URL || baseAppUrl) + "/debug?uri=" + encodeURIComponent(logEntry.url) + "|debug>` " + logEntry.url.replace(/^https?:\/\//, '')
                             }
                         }],
-                        "color": COLORS[data.color]
+                        color: COLORS[data.color]
                     }
                 ]
             }
@@ -88,7 +84,7 @@ exports.sendQANotification = function(logEntry, data) {
 }
 
 function getTestsSummary(cb) {
-    exports.loadPluginTests(function(error, pluginTests) {
+    loadPluginTests(function(error, pluginTests) {
 
         pluginTests.forEach(function(pluginTest) {
 
@@ -124,7 +120,7 @@ function getTestsSummary(cb) {
     });
 }
 
-exports.loadPluginTests = function(cb) {
+export function loadPluginTests(cb) {
 
     var pluginTests;
 
@@ -137,7 +133,11 @@ exports.loadPluginTests = function(cb) {
                 sort:{
                     _id: 1
                 }
-            }, cb);
+            })
+                .then(data => {
+                    cb(null, data);
+                })
+                .catch(cb);
         },
 
         function loadTestSets(_pluginTests, cb) {
@@ -157,7 +157,11 @@ exports.loadPluginTests = function(cb) {
                             sort: {
                                 created_at: -1
                             }
-                        }, cb);
+                        })
+                            .then(data => {
+                                cb(null, data);
+                            })
+                            .catch(cb);
                     },
 
                     function(_testUrlSet, cb) {
@@ -165,7 +169,11 @@ exports.loadPluginTests = function(cb) {
                         if (testUrlSet) {
                             PageTestLog.find({
                                 test_set: testUrlSet._id
-                            }, cb)
+                            })
+                                .then(data => {
+                                    cb(null, data);
+                                })
+                                .catch(cb);
                         } else {
                             cb(null, null);
                         }
@@ -211,7 +219,7 @@ exports.loadPluginTests = function(cb) {
     });
 }
 
-exports.getPluginUnusedMethods = function(pluginId, debugData) {
+export function getPluginUnusedMethods(pluginId, debugData) {
 
     var usedMethods = getAllUsedMethods(debugData);
     var pluginMethods = findAllPluginMethods(pluginId, plugins);
@@ -223,7 +231,7 @@ exports.getPluginUnusedMethods = function(pluginId, debugData) {
     };
 };
 
-exports.getErrors = function(debugData) {
+export function getErrors(debugData) {
 
     var errors = [];
 
@@ -243,7 +251,7 @@ exports.getErrors = function(debugData) {
 
 var MAX_FEED_URLS = 5;
 
-var fetchFeedUrls = exports.fetchFeedUrls = function(feedUrl, options, cb) {
+export function fetchFeedUrls(feedUrl, options, cb) {
 
     if (typeof options === "function") {
         cb = options;
@@ -261,41 +269,46 @@ var fetchFeedUrls = exports.fetchFeedUrls = function(feedUrl, options, cb) {
         cb(error, urls);
     };
 
-    request(feedUrl)
-        .pipe(new FeedParser({addmeta: false}))
-        .on('error', function(error) {
-            _cb(error);
-        })
-        .on('readable', function () {
-            var stream = this, item;
-            while (item = stream.read()) {
 
-                if (urls.length < MAX_FEED_URLS) {
+    got.stream(feedUrl, {
+        https: {
+            rejectUnauthorized: false
+        }
+    })
+    .pipe(new FeedParser({ addmeta: false }))
+    .on('error', function(error) {
+        _cb(error);
+    })
+    .on('readable', function () {
+        var stream = this, item;
+        while (item = stream.read()) {
 
-                    var url = item.origlink || item.link;
+            if (urls.length < MAX_FEED_URLS) {
 
-                    if (options.getUrl) {
-                        url = options.getUrl(url);
-                    }
+                var url = item.origlink || item.link;
 
-                    if (!url) {
-                        return;
-                    }
+                if (options.getUrl) {
+                    url = options.getUrl(url);
+                }
 
-                    urls.push(url);
+                if (!url) {
+                    return;
+                }
 
-                    if (MAX_FEED_URLS == urls.length) {
-                        _cb();
-                    }
+                urls.push(url);
+
+                if (MAX_FEED_URLS === urls.length) {
+                    _cb();
                 }
             }
-        })
-        .on('end', function() {
-            _cb();
-        });
+        }
+    })
+    .on('end', function() {
+        _cb();
+    });
 };
 
-exports.fetchUrlsByPageOnFeed = function(pageWithFeed, otpions, cb) {
+export function fetchUrlsByPageOnFeed(pageWithFeed, otpions, cb) {
 
     if (typeof options === "function") {
         cb = options;
@@ -321,12 +334,15 @@ exports.fetchUrlsByPageOnFeed = function(pageWithFeed, otpions, cb) {
 
                 feeds = alternate.filter(function(o) {
                     return o.href && (o.type == "application/atom+xml" || o.type == "application/rss+xml");
-                });
+                }).map(i => i.href);
+            } else if (meta['rss-feed']) {
+                // Used on `ted.com`.
+                feeds = [meta['rss-feed']];
             }
 
             if (feeds && feeds.length > 0) {
 
-                cb(null, feeds[0].href, otpions);
+                cb(null, feeds[0], otpions);
 
             } else {
                 cb("No feeds found on " + pageWithFeed);
@@ -338,7 +354,7 @@ exports.fetchUrlsByPageOnFeed = function(pageWithFeed, otpions, cb) {
     ], cb);
 };
 
-exports.fetchUrlsByPageAndSelector = function(page, selector, options, cb) {
+export function fetchUrlsByPageAndSelector(page, selector, options, cb) {
 
     if (typeof options === "function") {
         cb = options;
@@ -351,14 +367,14 @@ exports.fetchUrlsByPageAndSelector = function(page, selector, options, cb) {
             iframelyGetPluginData(page, 'cheerio', findWhitelistRecordFor, cb);
         },
 
-        function($, cb) {
+        function(cheerio, cb) {
 
-            var $links = $(selector);
+            var $links = cheerio(selector);
 
             var urls = [];
             $links.each(function() {
                 if (urls.length < MAX_FEED_URLS) {
-                    var href = $(this).attr(options.urlAttribute || "href");
+                    var href = cheerio(this).attr(options.urlAttribute || "href");
                     if (href) {
                         var href = url.resolve(page, href);
                         if (urls.indexOf(href) == -1) {

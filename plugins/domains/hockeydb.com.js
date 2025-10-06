@@ -1,4 +1,4 @@
-module.exports = {
+export default {
 
     re: /^https?:\/\/www\.hockeydb\.com\/ihdb\/stats\/pdisplay\.php\?pid=(\d+)/i,
 
@@ -8,10 +8,11 @@ module.exports = {
 
         var links = [{
             type: CONFIG.T.text_html,
-            rel: [CONFIG.R.app, CONFIG.R.html5],
-            html:'<script type="text/javascript" src="http://www.hockeydb.com/em/?pid=' + urlMatch[1] + '"></script>',
+            rel: [CONFIG.R.app, CONFIG.R.ssl],
+            html:'<script type="text/javascript" src="https://www.hockeydb.com/em/?pid=' + urlMatch[1] + '"></script>',
             // href: 'http://www.hockeydb.com/em/?pid=' + urlMatch[1],
-            width: 604
+            'max-width': 604,
+            height: 414
         }];
 
         // we also need a thumbnail for SSL fallback to summary card
@@ -29,7 +30,8 @@ module.exports = {
     },
 
     tests: [
-        "http://www.hockeydb.com/ihdb/stats/pdisplay.php?pid=89716",
-        "http://www.hockeydb.com/ihdb/stats/pdisplay.php?pid=73254"
+        "https://www.hockeydb.com/ihdb/stats/pdisplay.php?pid=89716",
+        "https://www.hockeydb.com/ihdb/stats/pdisplay.php?pid=73254",
+        "https://hockeydb.com/ihdb/stats/pdisplay.php?pid=4910"
     ]
 };

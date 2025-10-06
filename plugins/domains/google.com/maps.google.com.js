@@ -1,6 +1,5 @@
-var URL = require("url");
-var _ = require('underscore');
-var QueryString = require("querystring");
+import * as URL from "url";
+import * as QueryString from "querystring";
 
 var TypeMap = {
     m: 'roadmap',
@@ -14,7 +13,7 @@ function diameterToZoom (diameter) {
     return zoom < 0 ? 0 : zoom > 20 ? 20 : zoom;
 }
 
-module.exports = {
+export default {
 
     re: [
         /^https?:\/\/maps\.google\.(?:com?\.)?[a-z]+\/(?:maps(?:\/ms|\/preview)?)?[\?\#].+/i,
@@ -24,6 +23,12 @@ module.exports = {
     mixins: [
         '*'
     ],
+
+    getMeta: function() {
+        return {
+            site: 'Google Maps'
+        }
+    },
 
     getLink: function(url, options) {
         url = URL.parse(url,true);
@@ -71,7 +76,7 @@ module.exports = {
 
         delete query.output;
 
-        var iframe_query = _.extend({},query,{ie: 'UTF8', output: 'embed'});
+        var iframe_query = Object.assign({},query,{ie: 'UTF8', output: 'embed'});
 
         if (!query.spn && query.sspn) {
             iframe_query.spn = query.sspn;
@@ -117,9 +122,9 @@ module.exports = {
                     thumb_query.zoom = Math.max(zoom-1,0);
                 }
             }
-            var apiKey = options.getProviderOptions('google.maps.apiKey');
+            var apiKey = options.getProviderOptions('google.maps_key');
             if (apiKey) {
-                thumb_query.apiKey = apiKey;
+                thumb_query.key = apiKey;
             }
             if (query.hl) {
                 thumb_query.language = query.hl;
@@ -139,13 +144,20 @@ module.exports = {
             links.push({
                 href: 'http://maps.googleapis.com/maps/api/staticmap?'+QueryString.stringify(thumb_query),
                 rel: CONFIG.R.thumbnail,
-                type: CONFIG.T.image_png,
-                width:  250,
-                height: 250
+                type: CONFIG.T.image
+                // And let's validate image = that API key allows static maps
             });
         }
 
         return links;
+    },
+
+    getData: function(url, options, query, cb) {
+        // Embedded version is redirected to unsupported google.com/map... by htmlparser
+        // ex.: https://maps.google.com/maps?saddr=Linz,+Austria&daddr=48.8674527,2.3531961+to:London,+United+Kingdom&hl=en&sll=49.843352,7.08885&sspn=5.930447,16.907959&geocode=Ffwa4QIdBvzZAClNhZn6lZVzRzHEdXlXLClTfA%3BFXyo6QIdLOgjACmptoaSEG7mRzHRA-RB5kIhIA%3BFa7_EQMd8Cv-_yl13iGvC6DYRzGZKtXdWjqWUg&oq=London&t=h&mra=dpe&mrsp=1&sz=7&via=1&z=7
+        return cb (!options.redirectsHistory && query.output === 'embed' ? { 
+            redirect: url.replace('&output=embed', '')
+        } : null)
     },
 
     tests: [

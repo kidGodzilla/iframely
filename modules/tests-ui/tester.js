@@ -1,22 +1,21 @@
-global.CONFIG = require('../../config');
+import CONFIG from '../../config.loader.js';
+global.CONFIG = CONFIG;
 
 if (!CONFIG.tests) {
     console.error('Tests not started: CONFIG.tests not configured.');
     process.exit(0);
-    return;
+    // return;
 }
 
 process.title = "iframely-tests";
 
-var async = require('async');
-var _ = require('underscore');
-
-var models = require('./models');
-var utils = require('./utils');
-
-var iframely = require('../../lib/core').run;
-var whitelist = require('../../lib/whitelist');
-var pluginLoader = require('../../lib/loader/pluginLoader');
+import * as async from 'async';
+import * as _ from 'underscore';
+import * as models from './models.js';
+import * as utils from './utils.js';
+import { run as iframely } from '../../lib/core.js';
+import * as whitelist from '../../lib/whitelist.js';
+import * as pluginLoader from '../../lib/loader/pluginLoader.js';
 var plugins = pluginLoader._plugins;
 
 var testOnePlugin = false;
@@ -29,7 +28,7 @@ process.on('uncaughtException', function(err) {
 
     console.log("uncaughtException", err.stack);
 
-    TestingProgress.update({
+    TestingProgress.updateOne({
         _id: 1
     }, {
         $set: {
@@ -38,7 +37,8 @@ process.on('uncaughtException', function(err) {
         }
     }, {
         upsert: false
-    }, function(){
+    })
+    .finally(() => {
         process.abort();
     });
 });
@@ -47,11 +47,6 @@ var PluginTest = models.PluginTest;
 var PageTestLog = models.PageTestLog;
 var TestUrlsSet = models.TestUrlsSet;
 var TestingProgress = models.TestingProgress;
-
-if (!PluginTest) {
-    process.exit(0);
-    return;
-}
 
 function log() {
     if (CONFIG.DEBUG) {
@@ -66,21 +61,29 @@ function cerror() {
 }
 
 function updateObsoletePluginTests(providersIds, cb) {
-    PluginTest.update({
+    PluginTest.updateMany({
         _id: {
             $nin: providersIds
         },
         obsolete: false
-    }, {$set: {obsolete: true}}, {multi: true}, cb);
+    }, {$set: {obsolete: true}}, {multi: true})
+        .then(data => {
+            cb(null, data);
+        })
+        .catch(cb);
 }
 
 function updateActualPluginTests(providersIds, cb) {
-    PluginTest.update({
+    PluginTest.updateMany({
         _id: {
             $in: providersIds
         },
         obsolete: true
-    }, {$set: {obsolete: false}}, {multi: true}, cb);
+    }, {$set: {obsolete: false}}, {multi: true})
+        .then(data => {
+            cb(null, data);
+        })
+        .catch(cb);
 }
 
 function createNewPluginTests(providersIds, cb) {
@@ -88,11 +91,17 @@ function createNewPluginTests(providersIds, cb) {
     async.waterfall([
 
         function findExistingProviders(cb) {
-            PluginTest.find({
+            PluginTest
+            .find({
                 _id: {
                     $in: providersIds
                 }
-            }).distinct('_id', cb);
+            })
+            .distinct('_id')
+            .then(data => {
+                cb(null, data);
+            })
+            .catch(cb);
         },
 
         function(ids, cb) {
@@ -101,13 +110,17 @@ function createNewPluginTests(providersIds, cb) {
 
             async.eachSeries(newIds, function(id, cb) {
 
-                PluginTest.update({_id: id}, {
+                PluginTest.updateOne({_id: id}, {
                     $set: {
                         obsolete: false
                     }
                 }, {
                     upsert: true
-                }, cb)
+                })
+                    .then(data => {
+                        cb(null, data);
+                    })
+                    .catch(cb);
 
             }, cb);
         }
@@ -127,7 +140,7 @@ function checkPageTestLogChangeNotification(logEntry) {
         })
         .sort({created_at: -1})
         .limit(1)
-        .exec(function(error, previousLogEntry) {
+        .exec().then(previousLogEntry => {
 
             previousLogEntry = previousLogEntry && previousLogEntry.length && previousLogEntry[0];
 
@@ -217,7 +230,11 @@ function processPluginTests(pluginTest, plugin, count, cb) {
 
         function markStart(cb) {
             pluginTest.last_test_started_at = new Date();
-            pluginTest.save(cb);
+            pluginTest.save()
+                .then(data => {
+                    cb(null, data);
+                })
+                .catch(cb);
         },
 
         function fixProgress(a, cb) {
@@ -225,7 +242,7 @@ function processPluginTests(pluginTest, plugin, count, cb) {
                 cb(null, a);
             } else {
 
-                TestingProgress.update({
+                TestingProgress.updateOne({
                     _id: 1
                 }, {
                     $set: {
@@ -235,7 +252,11 @@ function processPluginTests(pluginTest, plugin, count, cb) {
                     }
                 }, {
                     upsert: false
-                }, cb);
+                })
+                    .then(data => {
+                        cb(null, data);
+                    })
+                    .catch(cb);
             }
         },
 
@@ -333,7 +354,11 @@ function processPluginTests(pluginTest, plugin, count, cb) {
                 urls: urls
             });
             testUrlsSet.errors_list = errors.length ? errors : undefined;
-            testUrlsSet.save(cb);
+            testUrlsSet.save()
+                .then(data => {
+                    cb(null, data);
+                })
+                .catch(cb);
         },
 
         function(testUrlsSet, cb) {
@@ -391,8 +416,10 @@ function processPluginTests(pluginTest, plugin, count, cb) {
                     if (error) {
                         if (error.code === "timeout") {
                             logEntry.warnings = [error.code];
-                        } else if ((error.responseCode === 404 || error.responseCode === 410)) {
+                        } else if (error.responseCode === 404 || error.responseCode === 410) {
                             logEntry.warnings = [error.responseCode];
+                        } else if (error.responseCode === 403 && error.messages) {
+                            logEntry.warnings = [error.responseCode].concat(error.messages);
                         } else if (error.stack) {
                             logEntry.errors_list = [error.stack];
                         } else {
@@ -466,12 +493,7 @@ function processPluginTests(pluginTest, plugin, count, cb) {
                         }
                     }
 
-                    logEntry.save(function(error) {
-
-                        if (error) {
-                            console.log('error', error)
-                            return cb(error);
-                        }
+                    logEntry.save().then(() => {
 
                         checkPageTestLogChangeNotification(logEntry);
 
@@ -501,6 +523,9 @@ function processPluginTests(pluginTest, plugin, count, cb) {
                             cb();
                         }
                         
+                    }).catch(error => {
+                        console.log('error', error)
+                        cb(error);
                     });
                 }
 
@@ -524,12 +549,16 @@ function processPluginTests(pluginTest, plugin, count, cb) {
         },
 
         function removeOldSets(cb) {
-            TestUrlsSet.remove({
+            TestUrlsSet.deleteMany({
                 _id: {
                     $ne: testUrlsSet._id
                 },
                 plugin: plugin.id
-            }, cb);
+            })
+                .then(data => {
+                    cb(null, data);
+                })
+                .catch(cb);
         }
 
     ], cb);
@@ -573,7 +602,11 @@ function testAll(cb) {
         function loadPluginTests(data, cb) {
 
             if (testOnePlugin) {
-                PluginTest.find({_id: testOnePlugin}, cb);
+                PluginTest.find({_id: testOnePlugin})
+                    .then(data => {
+                        cb(null, data);
+                    })
+                    .catch(cb);
             } else {
 
                 async.waterfall([
@@ -581,7 +614,11 @@ function testAll(cb) {
                     function loadPluginTests(cb) {
                         PluginTest.find({
                             obsolete: false
-                        }, {}, {}, cb);
+                        })
+                        .then(data => {
+                            cb(null, data);
+                        })
+                        .catch(cb);
                     },
 
                     function filterAndSort(pluginTests, cb) {
@@ -629,7 +666,7 @@ function testAll(cb) {
             if (testOnePlugin || pluginTests.length == 0) {
                 cb(null, pluginTests)
             } else {
-                TestingProgress.update({
+                TestingProgress.updateOne({
                     _id: 1
                 }, {
                     $set: {
@@ -645,9 +682,11 @@ function testAll(cb) {
                     }
                 }, {
                     upsert: true
-                }, function(error) {
-                    cb(error, pluginTests);
-                });
+                })
+                .then(() => {
+                    cb(null, pluginTests);
+                })
+                .catch(cb);
             }
         },
 
@@ -667,7 +706,11 @@ function testAll(cb) {
                     } else {
                         pluginTest.error = undefined;
                     }
-                    pluginTest.save(cb);
+                    pluginTest.save()
+                        .then(data => {
+                            cb(null, data);
+                        })
+                        .catch(cb);
                 });
 
             }, cb);
@@ -679,7 +722,7 @@ function testAll(cb) {
             } else {
                 console.log('finish');
 
-                TestingProgress.update({
+                TestingProgress.updateOne({
                     _id: 1
                 }, {
                     $set: {
@@ -693,7 +736,11 @@ function testAll(cb) {
                     }
                 }, {
                     upsert: false
-                }, cb);
+                })
+                .then(data => {
+                    cb(null, data);
+                })
+                .catch(cb);
             }
         }
 

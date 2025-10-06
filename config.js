@@ -1,40 +1,39 @@
-(function() {
+    import * as path from 'path';
+    import * as fs from 'fs';
+    import * as yaml_config from 'node-yaml-config';
 
-    // Monkey patch before you require http for the first time.
-    var majorVersion = process.version.match(/v(\d+)\./);
-    majorVersion = parseInt(majorVersion);
-    if (majorVersion < 10) {
-        process.binding('http_parser').HTTPParser = require('http-parser-js').HTTPParser;
-    }
+    import { fileURLToPath } from 'url';
+    import { dirname } from 'path';
 
-    var _ = require('underscore');
-    var path = require('path');
-    var fs = require('fs');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    
+    import { readFile } from 'fs/promises';
+    const json = JSON.parse(await readFile(new URL('./package.json', import.meta.url)));
+    var version = json.version;
 
-    var version = require('./package.json').version;
-
-    var config = {
+    const config = {
 
         baseAppUrl: "",
-        port: 8061,
+        port: 5000,
         relativeStaticUrl: "/s",
         use_http2: true,
         DEBUG: false,
 
+        WHITELIST_URL: 'https://iframely.com/qa/domains.json',
         DISABLE_HTTP2: true,
 
         SPDY_AGENT_DEFAULT_PORT: 443,
-        WHITELIST_URL: 'https://iframely.com/qa/whitelist.json',
         WHITELIST_URL_RELOAD_PERIOD: 60 * 60 * 1000,  // will reload WL every hour, if no local files are found in /whitelist folder
 
         WHITELIST_WILDCARD: {},
-        WHITELIST_LOG_URL: 'https://iframely.com/whitelist-log',
 
         // Default cache engine to prevent warning.
         CACHE_ENGINE: 'node-cache',
         CACHE_TTL: 24 * 60 * 60,
+        CACHE_ERROR_TTL: 10 * 60,   // 10 min - cache for error responses.
         API_REQUEST_CACHE_TTL: 30 * 24 * 60 * 60,
-        IMAGE_META_CACHE_TTL: 7 *24 * 60 * 60,
+        IMAGE_META_CACHE_TTL: 7 * 24 * 60 * 60,
 
         CACHE_TTL_PAGE_TIMEOUT: 10 * 60,
         CACHE_TTL_PAGE_404: 10 * 60,
@@ -56,7 +55,9 @@
         CLUSTER_WORKER_RESTART_ON_PERIOD: 8 * 3600 * 1000, // 8 hours.
         CLUSTER_WORKER_RESTART_ON_MEMORY_USED: 120 * 1024 * 1024, // 120 MB.
 
-        RESPONSE_TIMEOUT: 10 * 1000,
+        MAX_REDIRECTS: 5,
+
+        RESPONSE_TIMEOUT: 15 * 1000,
 
         SHUTDOWN_TIMEOUT: 12 * 1000,
 
@@ -64,15 +65,15 @@
 
         FB_USER_AGENT: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
 
-        ACCEPT_LANGUAGE_SUFFIX: ';q=0.9,en;q=0.7,*;q=0.5',
-
         SKIP_IFRAMELY_RENDERS: false,
         DEFAULT_ASPECT_RATIO: 16 / 9,
+        DOC_ASPECT_RATIO: 8.5 / 11,
         MAX_VERTICAL_ASPECT_RATIO: 1,
         ASPECT_RATIO_PRECISION: 0.25,
 
         DEFAULT_OMIT_CSS_WRAPPER_CLASS: 'iframely-responsive',
         DEFAULT_MAXWIDTH_WRAPPER_CLASS: 'iframely-embed',
+        FORCE_WIDTH_LIMIT_CONTAINER: false,
 
         T: {
             text_html: "text/html",
@@ -80,16 +81,17 @@
             javascript: "application/javascript",
             safe_html: "text/x-safe-html",
             image_jpeg: "image/jpeg",
-            flash: "application/x-shockwave-flash",
+            flash: "application/x-shockwave-flash", // Adobe Flash Player is no longer supported
             image: "image",
             image_icon: "image/icon",
             image_png: "image/png",
-            image_svg: "image/svg",
+            image_svg: "image/svg+xml",
             image_gif: "image/gif",
             image_webp: "image/webp",
             video_mp4: "video/mp4",
             video_ogg: "video/ogg",
             video_webm: "video/webm",
+            video_iso: "video/iso.segment",
             stream_apple_mpegurl: "application/vnd.apple.mpegurl",
             stream_x_mpegurl: "application/x-mpegURL",
             audio_mp3: "audio/mp3",
@@ -143,7 +145,6 @@
             og: "og",
             twitter: "twitter",
             oembed: "oembed",
-            sm4: "sm4",
 
             icon: "icon",
             logo: "logo",
@@ -162,24 +163,23 @@
             audio: 'audio',
             slideshow: 'slideshow',
             playlist: 'playlist',
-            '3d': '3d'
+            '3d': '3d',
+            encrypted: 'encrypted-media',
+
+            profile: 'profile',
+            map: 'map',
+
+            maxwidth: 'maxwidth'
         },
 
         FEATURES: [ // feature policy: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Feature-Policy#Directives
-            'ambient-light-sensor', 'autoplay', 'accelerometer', 'camera', 'display-capture', 'document-domain', 'encrypted-media',
-            'fullscreen', 'geolocation', 'gyroscope', 'magnetometer', 'microphone', 'midi', 'payment', 'picture-in-picture',
-            'speaker', 'sync-xhr', 'usb', 'wake-lock', 'vr', 'xr', 'vr / xr'
+            'accelerometer', 'ambient-light-sensor', 'autoplay', 'battery', 'bluetooth', 'camera', 'clipboard-read', 
+            'clipboard-write', 'display-capture', 'document-domain', 'encrypted-media', 'execution-while-not-rendered', 
+            'execution-while-out-of-viewport', 'fullscreen', 'gamepad', 'geolocation', 'gyroscope', 'hid', 
+            'identity-credentials-get', 'idle-detection', 'local-fonts', 'magnetometer', 'microphone', 'midi', 
+            'otp-credentials', 'payment', 'picture-in-picture', 'publickey-credentials-get', 'screen-wake-lock', 
+            'serial', 'speaker-selection', 'storage-access', 'usb', 'web-share', 'window-management', 'xr-spatial-tracking'
         ],
-
-        // Option names
-        O: {
-            // compact & full - deprecated
-            compact: "iframely.less",
-            full: "iframely.more",
-            // use O.more & O.less instead
-            more: "iframely.more",
-            less: "iframely.less"
-        },
 
         // Option labels:
         L: {
@@ -331,9 +331,6 @@
             "og": [
                 "video"
             ],
-            "sm4": [
-                "video"
-            ],
             "oembed": [
                 "link",
                 "rich",
@@ -344,14 +341,6 @@
                 "video",
                 "embedURL"
             ]
-        },
-
-        REL_OPTIONS: {
-            all: ["ssl"],
-            player: ["responsive", "autoplay"],
-            video: ["responsive", "autoplay"],
-            link: ["reader"],
-            rich: ["reader"]
         },
 
         // whitelist rel to iframely rel.
@@ -366,11 +355,10 @@
             "oembed",
             "og",
             "twitter",
-            "iframely",
-            "sm4"
+            "iframely"
         ],
 
-        KNOWN_VIDEO_SOURCES: /(youtube|youtu|youtube\-nocookie|vimeo|dailymotion|theplatform|jwplatform|jwplayer|ooyala|cnevids|newsinc|podbean|simplecast|libsyn|wistia|podiant|art19|kaltura|mtvnservices|brightcove|bcove|soundcloud|giphy|viddler|flowplayer|vidible|bandzoogle|podigee|smugmug|facebook|vid|ultimedia|mixcloud|vidyard|youplay|streamable)\.\w+\//i,
+        KNOWN_VIDEO_SOURCES: /(youtube|youtu|youtube\-nocookie|vimeo|dailymotion|theplatform|jwplatform|jwplayer|cnevids|newsinc|podbean|simplecast|libsyn|wistia|podiant|art19|kaltura|mtvnservices|brightcove|bcove|soundcloud|giphy|flowplayer|vidible|bandzoogle|podigee|smugmug|facebook|vid|ultimedia|mixcloud|vidyard|youplay|streamable|captivate|mdstrm|mediadelivery|hearstapps|rudo|acast|screen9|spotlightr|loom)\.\w+\//i,
 
         OEMBED_RELS_PRIORITY: ["app", "player", "survey", "image", "reader"],
         OEMBED_RELS_MEDIA_PRIORITY: ["player", "survey", "image", "reader", "app"],
@@ -378,30 +366,68 @@
         providerOptions: {
             "readability": {},
             "twitter.status": {}
-        }
+        },
+
+        LOG_DATE_FORMAT: "\\[YY-MM-DD HH:mm:ss\\]:",
+
+        ERRORS_TO_RETRY: [
+            'ECONN',
+            'EAI_AGAIN',
+            'ENET',
+            'HPE_INVALID_',
+            'ERR_SSL_'
+        ]
     };
+
+    // Providers config loader.
+    var local_config_path = path.resolve(__dirname, "config.providers.js");
+    if (fs.existsSync(local_config_path)) {
+        var local = await import(local_config_path);
+        local = local && local.default;
+        Object.assign(config, local);
+    }
+
 
     var env_config_path = path.resolve(
         __dirname,
         "config." + (process.env.NODE_ENV || "local") + ".js"
     );
 
-    var local_config_path = path.resolve(__dirname, "config.local.js");
+    local_config_path = path.resolve(__dirname, "config.local.js");
 
     var local;
 
     // Try config by NODE_ENV.
     if (fs.existsSync(env_config_path)) {
-
-        local = require(env_config_path);
+        local = await import(env_config_path);
+        local = local && local.default;
 
     } else if (fs.existsSync(local_config_path)) {
         // Else - try local config.
-
-        local = require(local_config_path);
+        local = await import(local_config_path);
+        local = local && local.default;
     }
 
-    _.extend(config, local);
+    Object.assign(config, local);
+
+    env_config_path = path.resolve(
+        __dirname,
+        "config." + (process.env.NODE_ENV || "local") + ".yml"
+    );
+
+    local_config_path = path.resolve(__dirname, "config.local.yml");
+
+    // Try config by NODE_ENV.
+    if (fs.existsSync(env_config_path)) {
+        local = yaml_config.load(env_config_path);
+    } else if (fs.existsSync(local_config_path)) {
+        // Else - try local config.
+        local = yaml_config.load(local_config_path);
+    } else {
+        local = null;
+    }
+
+    Object.assign(config, local);
 
     if (!config.baseStaticUrl) {
         config.baseStaticUrl = config.baseAppUrl + config.relativeStaticUrl;
@@ -425,5 +451,4 @@
         config.HTTP2_RETRY_CODES[item] = 1;
     });
 
-    module.exports = config;
-})();
+    export default config;
