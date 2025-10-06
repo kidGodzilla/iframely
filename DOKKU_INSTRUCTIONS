@@ -1,4 +1,6 @@
 # Dokku installation instructions
 
-1. Update port mapping to `http:80:8061` with `dokku config:set DOKKU_PROXY_PORT_MAP='http:80:8061'`
-2. That's it
+1. see removed
+2. Added BUILDPACK_URL: https://github.com/heroku/heroku-buildpack-nodejs but it may be optional now
+
+
